@@ -213,6 +213,22 @@ class VectorStore:
             print(f"Error getting course count: {e}")
             return 0
     
+    def get_course_outline(self, course_name: str) -> Optional[Dict[str, Any]]:
+        """Resolve a (possibly partial) course name and return its title, links, and lesson list"""
+        import json
+        title = self._resolve_course_name(course_name)
+        if not title:
+            return None
+        try:
+            results = self.course_catalog.get(ids=[title])
+            if results and results['metadatas']:
+                metadata = results['metadatas'][0].copy()
+                metadata['lessons'] = json.loads(metadata.pop('lessons_json', '[]'))
+                return metadata
+        except Exception as e:
+            print(f"Error getting course outline: {e}")
+        return None
+
     def get_all_courses_metadata(self) -> List[Dict[str, Any]]:
         """Get metadata for all courses in the vector store"""
         import json
