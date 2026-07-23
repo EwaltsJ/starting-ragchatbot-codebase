@@ -1,7 +1,6 @@
 from dataclasses import replace
 
 import pytest
-
 from config import config as real_app_config
 from rag_system import RAGSystem
 
@@ -23,11 +22,15 @@ class TestRAGSystemQuery:
     ):
         rag = rag_system_real_retrieval
 
-        def fake_generate_response(query, conversation_history=None, tools=None, tool_manager=None):
+        def fake_generate_response(
+            query, conversation_history=None, tools=None, tool_manager=None
+        ):
             tool_manager.execute_tool("search_course_content", query="course content")
             return "Here is the synthesized answer."
 
-        monkeypatch.setattr(rag.ai_generator, "generate_response", fake_generate_response)
+        monkeypatch.setattr(
+            rag.ai_generator, "generate_response", fake_generate_response
+        )
 
         answer, sources = rag.query("What does this course cover?")
 
@@ -39,20 +42,28 @@ class TestRAGSystemQuery:
         # call doesn't leak sources from the first call.
         assert rag.tool_manager.get_last_sources() == []
 
-    def test_query_without_tool_use_returns_no_sources(self, rag_system_real_retrieval, monkeypatch):
+    def test_query_without_tool_use_returns_no_sources(
+        self, rag_system_real_retrieval, monkeypatch
+    ):
         rag = rag_system_real_retrieval
 
-        def fake_generate_response(query, conversation_history=None, tools=None, tool_manager=None):
+        def fake_generate_response(
+            query, conversation_history=None, tools=None, tool_manager=None
+        ):
             return "General knowledge answer, no search needed."
 
-        monkeypatch.setattr(rag.ai_generator, "generate_response", fake_generate_response)
+        monkeypatch.setattr(
+            rag.ai_generator, "generate_response", fake_generate_response
+        )
 
         answer, sources = rag.query("What is 2+2?")
 
         assert answer == "General knowledge answer, no search needed."
         assert sources == []
 
-    def test_query_updates_session_history(self, rag_system_real_retrieval, monkeypatch):
+    def test_query_updates_session_history(
+        self, rag_system_real_retrieval, monkeypatch
+    ):
         rag = rag_system_real_retrieval
         monkeypatch.setattr(
             rag.ai_generator, "generate_response", lambda **kwargs: "an answer"
@@ -71,12 +82,16 @@ class TestRAGSystemQuery:
         rag = rag_system_real_retrieval
         captured = {}
 
-        def fake_generate_response(query, conversation_history=None, tools=None, tool_manager=None):
+        def fake_generate_response(
+            query, conversation_history=None, tools=None, tool_manager=None
+        ):
             captured["tools"] = tools
             captured["tool_manager"] = tool_manager
             return "answer"
 
-        monkeypatch.setattr(rag.ai_generator, "generate_response", fake_generate_response)
+        monkeypatch.setattr(
+            rag.ai_generator, "generate_response", fake_generate_response
+        )
         rag.query("a content question")
 
         tool_names = {t["name"] for t in captured["tools"]}
@@ -99,8 +114,8 @@ class TestRAGSystemLive:
 @pytest.mark.live
 class TestQueryEndpointLive:
     def test_live_query_endpoint_returns_200_for_content_question(self, real_config):
-        from starlette.testclient import TestClient
         from app import app
+        from starlette.testclient import TestClient
 
         client = TestClient(app)
         response = client.post(

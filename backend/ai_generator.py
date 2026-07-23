@@ -1,5 +1,7 @@
+from typing import Any, Dict, List, Optional, Tuple
+
 import anthropic
-from typing import List, Optional, Dict, Any, Tuple
+
 
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
@@ -33,22 +35,24 @@ Provide only the direct answer to what was asked.
 """
 
     MAX_TOOL_ROUNDS = 2
-    FALLBACK_MESSAGE = "I wasn't able to complete that request. Please try rephrasing your question."
+    FALLBACK_MESSAGE = (
+        "I wasn't able to complete that request. Please try rephrasing your question."
+    )
 
     def __init__(self, api_key: str, model: str):
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
 
         # Pre-build base API parameters
-        self.base_params = {
-            "model": self.model,
-            "max_tokens": 800
-        }
+        self.base_params = {"model": self.model, "max_tokens": 800}
 
-    def generate_response(self, query: str,
-                         conversation_history: Optional[str] = None,
-                         tools: Optional[List] = None,
-                         tool_manager=None) -> str:
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: Optional[str] = None,
+        tools: Optional[List] = None,
+        tool_manager=None,
+    ) -> str:
         """
         Generate AI response with optional tool usage and conversation context.
 
@@ -78,8 +82,13 @@ Provide only the direct answer to what was asked.
 
         return self._run_tool_loop(messages, system_content, tools, tool_manager)
 
-    def _run_tool_loop(self, messages: List[Dict[str, Any]], system_content: str,
-                        tools: List, tool_manager) -> str:
+    def _run_tool_loop(
+        self,
+        messages: List[Dict[str, Any]],
+        system_content: str,
+        tools: List,
+        tool_manager,
+    ) -> str:
         """
         Run up to MAX_TOOL_ROUNDS rounds of tool-enabled API calls, executing any
         requested tools and feeding results back to Claude between rounds.
@@ -97,7 +106,9 @@ Provide only the direct answer to what was asked.
                 return self._extract_text(response)
 
             messages = messages + [{"role": "assistant", "content": response.content}]
-            tool_result_blocks, any_error = self._execute_tool_use_blocks(tool_use_blocks, tool_manager)
+            tool_result_blocks, any_error = self._execute_tool_use_blocks(
+                tool_use_blocks, tool_manager
+            )
             messages = messages + [{"role": "user", "content": tool_result_blocks}]
 
             if any_error or round_num == self.MAX_TOOL_ROUNDS:
@@ -107,7 +118,9 @@ Provide only the direct answer to what was asked.
         return self._extract_text(final_response) or self.FALLBACK_MESSAGE
 
     @staticmethod
-    def _execute_tool_use_blocks(tool_use_blocks: List, tool_manager) -> Tuple[List[Dict[str, Any]], bool]:
+    def _execute_tool_use_blocks(
+        tool_use_blocks: List, tool_manager
+    ) -> Tuple[List[Dict[str, Any]], bool]:
         """
         Execute every tool_use block from one round, returning the resulting
         tool_result blocks (as a single list) and whether any call errored.
@@ -119,21 +132,30 @@ Provide only the direct answer to what was asked.
                 content = tool_manager.execute_tool(block.name, **block.input)
             except Exception as exc:
                 any_error = True
-                tool_results.append({
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": f"Tool '{block.name}' failed: {exc}",
+                        "is_error": True,
+                    }
+                )
+                continue
+            tool_results.append(
+                {
                     "type": "tool_result",
                     "tool_use_id": block.id,
-                    "content": f"Tool '{block.name}' failed: {exc}",
-                    "is_error": True,
-                })
-                continue
-            tool_results.append({
-                "type": "tool_result",
-                "tool_use_id": block.id,
-                "content": content,
-            })
+                    "content": content,
+                }
+            )
         return tool_results, any_error
 
-    def _call_claude(self, messages: List[Dict[str, Any]], system_content: str, tools: Optional[List] = None):
+    def _call_claude(
+        self,
+        messages: List[Dict[str, Any]],
+        system_content: str,
+        tools: Optional[List] = None,
+    ):
         """Build API params and make a single call to Claude."""
         api_params = {
             **self.base_params,

@@ -2,7 +2,6 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from ai_generator import AIGenerator
 
 
@@ -30,14 +29,18 @@ def generator_with_mock_client():
 class TestGenerateResponseWithoutToolUse:
     def test_direct_response_makes_single_api_call(self, generator_with_mock_client):
         generator, mock_client = generator_with_mock_client
-        mock_client.messages.create.return_value = make_response([text_block("Paris is the capital of France.")])
+        mock_client.messages.create.return_value = make_response(
+            [text_block("Paris is the capital of France.")]
+        )
 
         result = generator.generate_response("What is the capital of France?")
 
         assert result == "Paris is the capital of France."
         assert mock_client.messages.create.call_count == 1
 
-    def test_tools_and_tool_choice_included_when_tools_provided(self, generator_with_mock_client):
+    def test_tools_and_tool_choice_included_when_tools_provided(
+        self, generator_with_mock_client
+    ):
         generator, mock_client = generator_with_mock_client
         mock_client.messages.create.return_value = make_response([text_block("answer")])
         tools = [{"name": "search_course_content"}]
@@ -58,28 +61,40 @@ class TestGenerateResponseWithoutToolUse:
         assert "tools" not in call_kwargs
         assert "tool_choice" not in call_kwargs
 
-    def test_conversation_history_embedded_in_system_prompt(self, generator_with_mock_client):
+    def test_conversation_history_embedded_in_system_prompt(
+        self, generator_with_mock_client
+    ):
         generator, mock_client = generator_with_mock_client
         mock_client.messages.create.return_value = make_response([text_block("answer")])
 
-        generator.generate_response("question", conversation_history="User: hi\nAssistant: hello")
+        generator.generate_response(
+            "question", conversation_history="User: hi\nAssistant: hello"
+        )
 
         call_kwargs = mock_client.messages.create.call_args.kwargs
         assert "Previous conversation:" in call_kwargs["system"]
         assert "User: hi" in call_kwargs["system"]
 
-    def test_extract_text_skips_leading_thinking_blocks(self, generator_with_mock_client):
+    def test_extract_text_skips_leading_thinking_blocks(
+        self, generator_with_mock_client
+    ):
         generator, mock_client = generator_with_mock_client
         thinking_block = SimpleNamespace(type="thinking", thinking="reasoning...")
-        mock_client.messages.create.return_value = make_response([thinking_block, text_block("final answer")])
+        mock_client.messages.create.return_value = make_response(
+            [thinking_block, text_block("final answer")]
+        )
 
         result = generator.generate_response("question")
 
         assert result == "final answer"
 
-    def test_extract_text_returns_empty_string_when_no_text_block(self, generator_with_mock_client):
+    def test_extract_text_returns_empty_string_when_no_text_block(
+        self, generator_with_mock_client
+    ):
         generator, mock_client = generator_with_mock_client
-        mock_client.messages.create.return_value = make_response([SimpleNamespace(type="thinking", thinking="x")])
+        mock_client.messages.create.return_value = make_response(
+            [SimpleNamespace(type="thinking", thinking="x")]
+        )
 
         result = generator.generate_response("question")
 
@@ -87,13 +102,19 @@ class TestGenerateResponseWithoutToolUse:
 
 
 class TestGenerateResponseWithToolUse:
-    def test_tool_manager_executes_tool_with_correct_args(self, generator_with_mock_client):
+    def test_tool_manager_executes_tool_with_correct_args(
+        self, generator_with_mock_client
+    ):
         generator, mock_client = generator_with_mock_client
         tool_manager = MagicMock()
         tool_manager.execute_tool.return_value = "[Course A - Lesson 1]\nSome content"
 
         initial_response = make_response(
-            [tool_use_block("search_course_content", {"query": "MCP basics", "lesson_number": 1})],
+            [
+                tool_use_block(
+                    "search_course_content", {"query": "MCP basics", "lesson_number": 1}
+                )
+            ],
             stop_reason="tool_use",
         )
         final_response = make_response([text_block("Synthesized answer")])
@@ -111,7 +132,9 @@ class TestGenerateResponseWithToolUse:
         assert result == "Synthesized answer"
         assert mock_client.messages.create.call_count == 2
 
-    def test_second_round_includes_tools_and_tool_result_message(self, generator_with_mock_client):
+    def test_second_round_includes_tools_and_tool_result_message(
+        self, generator_with_mock_client
+    ):
         generator, mock_client = generator_with_mock_client
         tool_manager = MagicMock()
         tool_manager.execute_tool.return_value = "search result text"
@@ -124,7 +147,9 @@ class TestGenerateResponseWithToolUse:
         mock_client.messages.create.side_effect = [initial_response, final_response]
 
         generator.generate_response(
-            "question", tools=[{"name": "search_course_content"}], tool_manager=tool_manager
+            "question",
+            tools=[{"name": "search_course_content"}],
+            tool_manager=tool_manager,
         )
 
         # Round 2 still offers tools, since Claude may choose to make a second tool call
@@ -136,16 +161,26 @@ class TestGenerateResponseWithToolUse:
         tool_result_message = messages[-1]
         assert tool_result_message["role"] == "user"
         assert tool_result_message["content"] == [
-            {"type": "tool_result", "tool_use_id": "tool_abc", "content": "search result text"}
+            {
+                "type": "tool_result",
+                "tool_use_id": "tool_abc",
+                "content": "search result text",
+            }
         ]
 
-    def test_no_tool_execution_when_stop_reason_is_not_tool_use(self, generator_with_mock_client):
+    def test_no_tool_execution_when_stop_reason_is_not_tool_use(
+        self, generator_with_mock_client
+    ):
         generator, mock_client = generator_with_mock_client
         tool_manager = MagicMock()
-        mock_client.messages.create.return_value = make_response([text_block("direct answer")])
+        mock_client.messages.create.return_value = make_response(
+            [text_block("direct answer")]
+        )
 
         result = generator.generate_response(
-            "question", tools=[{"name": "search_course_content"}], tool_manager=tool_manager
+            "question",
+            tools=[{"name": "search_course_content"}],
+            tool_manager=tool_manager,
         )
 
         tool_manager.execute_tool.assert_not_called()
@@ -164,11 +199,19 @@ class TestSequentialToolCalling:
             stop_reason="tool_use",
         )
         round2_response = make_response(
-            [tool_use_block("search_course_content", {"query": "topic Y"}, id_="tool_2")],
+            [
+                tool_use_block(
+                    "search_course_content", {"query": "topic Y"}, id_="tool_2"
+                )
+            ],
             stop_reason="tool_use",
         )
         synthesis_response = make_response([text_block("final synthesized answer")])
-        mock_client.messages.create.side_effect = [round1_response, round2_response, synthesis_response]
+        mock_client.messages.create.side_effect = [
+            round1_response,
+            round2_response,
+            synthesis_response,
+        ]
 
         result = generator.generate_response(
             "compare question",
@@ -180,13 +223,17 @@ class TestSequentialToolCalling:
         assert mock_client.messages.create.call_count == 3
         assert tool_manager.execute_tool.call_count == 2
         tool_manager.execute_tool.assert_any_call("get_course_outline", course_name="X")
-        tool_manager.execute_tool.assert_any_call("search_course_content", query="topic Y")
+        tool_manager.execute_tool.assert_any_call(
+            "search_course_content", query="topic Y"
+        )
 
         synthesis_call_kwargs = mock_client.messages.create.call_args_list[2].kwargs
         assert "tools" not in synthesis_call_kwargs
         assert "tool_choice" not in synthesis_call_kwargs
 
-    def test_round_cap_enforced_even_if_synthesis_would_request_tool(self, generator_with_mock_client):
+    def test_round_cap_enforced_even_if_synthesis_would_request_tool(
+        self, generator_with_mock_client
+    ):
         generator, mock_client = generator_with_mock_client
         tool_manager = MagicMock()
         tool_manager.execute_tool.return_value = "result"
@@ -202,17 +249,27 @@ class TestSequentialToolCalling:
         # Even though this response looks tool_use-shaped, the synthesis call omits
         # tools entirely, so the API cannot legally return tool_use here in practice;
         # we just confirm the loop never makes a 4th call regardless.
-        synthesis_response = make_response([text_block("best effort answer")], stop_reason="tool_use")
-        mock_client.messages.create.side_effect = [round1_response, round2_response, synthesis_response]
+        synthesis_response = make_response(
+            [text_block("best effort answer")], stop_reason="tool_use"
+        )
+        mock_client.messages.create.side_effect = [
+            round1_response,
+            round2_response,
+            synthesis_response,
+        ]
 
         result = generator.generate_response(
-            "question", tools=[{"name": "search_course_content"}], tool_manager=tool_manager
+            "question",
+            tools=[{"name": "search_course_content"}],
+            tool_manager=tool_manager,
         )
 
         assert result == "best effort answer"
         assert mock_client.messages.create.call_count == 3
 
-    def test_tool_execution_error_terminates_loop_and_returns_gracefully(self, generator_with_mock_client):
+    def test_tool_execution_error_terminates_loop_and_returns_gracefully(
+        self, generator_with_mock_client
+    ):
         generator, mock_client = generator_with_mock_client
         tool_manager = MagicMock()
         tool_manager.execute_tool.side_effect = RuntimeError("vector store unavailable")
@@ -221,11 +278,15 @@ class TestSequentialToolCalling:
             [tool_use_block("search_course_content", {"query": "a"}, id_="tool_1")],
             stop_reason="tool_use",
         )
-        synthesis_response = make_response([text_block("I couldn't complete the search.")])
+        synthesis_response = make_response(
+            [text_block("I couldn't complete the search.")]
+        )
         mock_client.messages.create.side_effect = [round1_response, synthesis_response]
 
         result = generator.generate_response(
-            "question", tools=[{"name": "search_course_content"}], tool_manager=tool_manager
+            "question",
+            tools=[{"name": "search_course_content"}],
+            tool_manager=tool_manager,
         )
 
         assert result == "I couldn't complete the search."
@@ -234,9 +295,13 @@ class TestSequentialToolCalling:
         synthesis_call_kwargs = mock_client.messages.create.call_args_list[1].kwargs
         tool_result_message = synthesis_call_kwargs["messages"][-1]
         assert tool_result_message["content"][0]["is_error"] is True
-        assert "vector store unavailable" in tool_result_message["content"][0]["content"]
+        assert (
+            "vector store unavailable" in tool_result_message["content"][0]["content"]
+        )
 
-    def test_tool_execution_error_falls_back_when_synthesis_has_no_text(self, generator_with_mock_client):
+    def test_tool_execution_error_falls_back_when_synthesis_has_no_text(
+        self, generator_with_mock_client
+    ):
         generator, mock_client = generator_with_mock_client
         tool_manager = MagicMock()
         tool_manager.execute_tool.side_effect = RuntimeError("boom")
@@ -249,7 +314,9 @@ class TestSequentialToolCalling:
         mock_client.messages.create.side_effect = [round1_response, synthesis_response]
 
         result = generator.generate_response(
-            "question", tools=[{"name": "search_course_content"}], tool_manager=tool_manager
+            "question",
+            tools=[{"name": "search_course_content"}],
+            tool_manager=tool_manager,
         )
 
         assert result == AIGenerator.FALLBACK_MESSAGE
@@ -270,7 +337,9 @@ class TestSequentialToolCalling:
         mock_client.messages.create.side_effect = [round1_response, final_response]
 
         result = generator.generate_response(
-            "question", tools=[{"name": "search_course_content"}], tool_manager=tool_manager
+            "question",
+            tools=[{"name": "search_course_content"}],
+            tool_manager=tool_manager,
         )
 
         assert result == "combined answer"
@@ -283,10 +352,15 @@ class TestSequentialToolCalling:
             {"type": "tool_result", "tool_use_id": "tool_2", "content": "result B"},
         ]
 
-    def test_tool_not_found_string_result_does_not_terminate_loop(self, generator_with_mock_client):
+    def test_tool_not_found_string_result_does_not_terminate_loop(
+        self, generator_with_mock_client
+    ):
         generator, mock_client = generator_with_mock_client
         tool_manager = MagicMock()
-        tool_manager.execute_tool.side_effect = ["Tool 'bad_tool' not found", "second round result"]
+        tool_manager.execute_tool.side_effect = [
+            "Tool 'bad_tool' not found",
+            "second round result",
+        ]
 
         round1_response = make_response(
             [tool_use_block("bad_tool", {"query": "a"}, id_="tool_1")],
@@ -297,18 +371,30 @@ class TestSequentialToolCalling:
             stop_reason="tool_use",
         )
         synthesis_response = make_response([text_block("final answer")])
-        mock_client.messages.create.side_effect = [round1_response, round2_response, synthesis_response]
+        mock_client.messages.create.side_effect = [
+            round1_response,
+            round2_response,
+            synthesis_response,
+        ]
 
         result = generator.generate_response(
-            "question", tools=[{"name": "search_course_content"}], tool_manager=tool_manager
+            "question",
+            tools=[{"name": "search_course_content"}],
+            tool_manager=tool_manager,
         )
 
         assert result == "final answer"
         assert mock_client.messages.create.call_count == 3
 
-        first_result_message = mock_client.messages.create.call_args_list[1].kwargs["messages"][-1]
+        first_result_message = mock_client.messages.create.call_args_list[1].kwargs[
+            "messages"
+        ][-1]
         assert first_result_message["content"] == [
-            {"type": "tool_result", "tool_use_id": "tool_1", "content": "Tool 'bad_tool' not found"}
+            {
+                "type": "tool_result",
+                "tool_use_id": "tool_1",
+                "content": "Tool 'bad_tool' not found",
+            }
         ]
 
     def test_system_prompt_describes_two_round_capability(self):
@@ -319,7 +405,9 @@ class TestSequentialToolCalling:
 @pytest.mark.live
 class TestAIGeneratorLive:
     def test_live_call_to_configured_model_succeeds(self, real_config):
-        generator = AIGenerator(real_config.ANTHROPIC_API_KEY, real_config.ANTHROPIC_MODEL)
+        generator = AIGenerator(
+            real_config.ANTHROPIC_API_KEY, real_config.ANTHROPIC_MODEL
+        )
 
         result = generator.generate_response("Say hello in exactly one word.")
 

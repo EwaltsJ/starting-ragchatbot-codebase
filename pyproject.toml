@@ -17,6 +17,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "black>=25.1.0",
+    "ruff>=0.14.0",
 ]
 
 [tool.pytest.ini_options]
@@ -24,3 +26,20 @@ testpaths = ["backend/tests"]
 markers = [
     "live: makes real network calls to the Anthropic API and/or reads the real chroma_db data",
 ]
+
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+# E501 (line too long) is left to black, which does not wrap string literals
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# app.py intentionally suppresses a warning before importing the modules that trigger it
+"backend/app.py" = ["E402"]

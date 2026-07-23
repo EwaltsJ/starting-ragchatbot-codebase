@@ -1,5 +1,4 @@
 import pytest
-
 from search_tools import CourseSearchTool, ToolManager
 from vector_store import SearchResults
 
@@ -13,7 +12,9 @@ def make_results(docs, metas, distances=None):
 
 
 class TestCourseSearchToolExecute:
-    def test_execute_with_lesson_number_formats_header_and_uses_lesson_link(self, mock_vector_store):
+    def test_execute_with_lesson_number_formats_header_and_uses_lesson_link(
+        self, mock_vector_store
+    ):
         mock_vector_store.search.return_value = make_results(
             ["Some lesson content"],
             [{"course_title": "Intro to MCP", "lesson_number": 2}],
@@ -71,12 +72,16 @@ class TestCourseSearchToolExecute:
         mock_vector_store.search.return_value = make_results([], [])
 
         tool = CourseSearchTool(mock_vector_store)
-        result = tool.execute(query="x", course_name=course_name, lesson_number=lesson_number)
+        result = tool.execute(
+            query="x", course_name=course_name, lesson_number=lesson_number
+        )
 
         assert result == expected_suffix
 
     def test_execute_returns_vector_store_error_directly(self, mock_vector_store):
-        mock_vector_store.search.return_value = SearchResults.empty("No course found matching 'Nope'")
+        mock_vector_store.search.return_value = SearchResults.empty(
+            "No course found matching 'Nope'"
+        )
 
         tool = CourseSearchTool(mock_vector_store)
         result = tool.execute(query="x", course_name="Nope")
@@ -115,7 +120,9 @@ class TestToolManagerSourceTracking:
         mock_vector_store.get_lesson_link.return_value = "link"
         manager.execute_tool("search_course_content", query="x")
 
-        assert manager.get_last_sources() == [{"text": "Course A - Lesson 1", "link": "link"}]
+        assert manager.get_last_sources() == [
+            {"text": "Course A - Lesson 1", "link": "link"}
+        ]
 
         manager.reset_sources()
         assert manager.get_last_sources() == []
