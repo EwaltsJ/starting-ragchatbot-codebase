@@ -12,8 +12,8 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 os.chdir(BACKEND_DIR)
 
-from vector_store import VectorStore  # noqa: E402
 from config import config as real_app_config  # noqa: E402
+from vector_store import VectorStore  # noqa: E402
 
 
 @pytest.fixture

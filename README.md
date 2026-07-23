@@ -54,3 +54,13 @@ The application will be available at:
 - Web Interface: `http://localhost:8000`
 - API Documentation: `http://localhost:8000/docs`
 
+## Code Quality
+
+This project uses [black](https://black.readthedocs.io/) for formatting and [ruff](https://docs.astral.sh/ruff/) for linting.
+
+```bash
+./scripts/format.sh   # auto-format the codebase with black
+./scripts/lint.sh     # lint the codebase with ruff
+./scripts/check.sh    # run formatting check, linting, and tests (no files modified)
+```
+

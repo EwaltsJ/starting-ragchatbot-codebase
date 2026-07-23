@@ -23,7 +23,15 @@ cd backend && uv run uvicorn app:app --reload --port 8000
 
 Requires `ANTHROPIC_API_KEY` in a `.env` file at the repo root.
 
-There are no tests, linter, or type-checker configured in this repo currently.
+Code quality scripts (run from repo root):
+
+```bash
+./scripts/format.sh   # auto-format with black
+./scripts/lint.sh     # lint with ruff
+./scripts/check.sh    # format check + lint + tests, no files modified (use before committing)
+```
+
+Tests live in `backend/tests` (pytest, run via `uv run pytest backend/tests`). There is no type-checker configured in this repo currently.
 
 ## Architecture
 
